@@ -1,10 +1,9 @@
 $(document).ready(function () {
-    const defaultDerivationPath = "m/44'/60'/0'/0/0";
     const derivationPath = "m/44'/60'/0'/0/";
     const HDNode = ethers.HDNode;
     const provider = ethers.providers.getDefaultProvider('ropsten');
     const utils = ethers.utils;
-    let index = 0;
+
     let wallets = {};
     showView("viewHome");
 
@@ -15,18 +14,19 @@ $(document).ready(function () {
     $('#linkCreateNewWallet').click(function () {
         showView("viewCreateNewWallet");
     });
+
     $('#linkImportExistingWalletFromMnemonic').click(function () {
         $('#textareaOpenWallet').empty();
         $('#textareaOpenWallet').text('toddler online monitor oblige solid enrich cycle animal mad prevent hockey motor');
         showView("viewOpenExistingWallet");
     });
+
     $('#linkShowMnemonic').click(function () {
         showView("viewShowMnemonic");
     });
 
     $('#linkViewBalances').click(function () {
-        index = 0;
-        $('#showAddresses').empty();
+        $('#renderWallets').empty();
         showView("viewBalances");
     });
     $('#linkSendTransaction').click(function () {
@@ -37,8 +37,8 @@ $(document).ready(function () {
     $('#buttonGenerateNewWallet').click(generateNewWallet);
     $('#buttonOpenExistingWallet').click(openExistingWallet);
     $('#buttonShowMnemonic').click(showMnemonic);
-    $('#buttonViewAddresses').click(showBalances);
-    $('#buttonSendAddresses').click(showAddresses);
+    $('#buttonViewAddresses').click(showAddressesAndBalances);
+    $('#buttonSendAddresses').click(unlockWalletAndDeriveAddresses);
     $('#buttonSignTransaction').click(signTransaction);
     $('#buttonSendSignedTransaction').click(sendSignedTransaction);
 
@@ -81,7 +81,7 @@ $(document).ready(function () {
         })
     }
 
-    function showLoading(percent) {
+    function showLoadingProgress(percent) {
         $('#loadingBox').html("Loading... " + parseInt(percent * 100) + "% complete");
         $('#loadingBox').show();
         $('#loadingBox>header').click(function () {
@@ -91,29 +91,29 @@ $(document).ready(function () {
 
     function generateNewWallet() {
         let password = $('#createWalletPassword').val();
-        let randomEntropyBytes = utils.randomBytes(16);
-        let mnemonic = HDNode.entropyToMnemonic(randomEntropyBytes);
-
-        encrypt(mnemonic, password);
+        // let randomEntropyBytes = utils.randomBytes(16);
+        // let mnemonic = HDNode.entropyToMnemonic(randomEntropyBytes);
+        let wallet = ethers.Wallet.createRandom();
+        encryptAndSaveJSON(wallet, password)
+            .then(() => showInfo('PLEASE SAVE YOUR MNEMONIC: ' + wallet.mnemonic));
     }
 
-    function encrypt(mnemonic, password) {
-        let entropy = HDNode.mnemonicToEntropy(mnemonic);
-        let privateKey = HDNode.fromMnemonic(mnemonic).derivePath(defaultDerivationPath).privateKey;
+    function encryptAndSaveJSON(wallet, password) {
+        // let entropy = HDNode.mnemonicToEntropy(mnemonic);
+        // let privateKey = HDNode.fromMnemonic(mnemonic).derivePath(derivationPath + '0').privateKey;
+        // return secretStorage.encrypt(privateKey, password, { entropy }, showLoadingProgress)
+        //     .then(json => {
+        //         $('#loadingBox').hide();
+        //         sessionStorage['HDNode'] = json;
+        //         $('#textareaCreateWalletResult').text('JSON: ' + sessionStorage.HDNode);
+        //         showLoggedInButtons();
+        //     });
 
-        // Clarify you are encrypting a mnemonic
-        let options = {
-            entropy: entropy
-        };
-
-        secretStorage.encrypt(privateKey, password, options, (progress) => {
-            showLoading(progress)
-        })
+        return wallet.encrypt(password, {}, showLoadingProgress)
             .then(json => {
                 $('#loadingBox').hide();
                 sessionStorage['HDNode'] = json;
                 $('#textareaCreateWalletResult').text('JSON: ' + sessionStorage.HDNode);
-                showInfo('PLEASE SAVE YOUR MNEMONIC: ' + mnemonic);
                 showLoggedInButtons();
             });
     }
@@ -124,23 +124,9 @@ $(document).ready(function () {
             return showError('Invalid mnemonic!')
         }
         let password = $('#openWalletPassword').val();
-
-        let entropy = HDNode.mnemonicToEntropy(mnemonic);
-        let privateKey = HDNode.fromMnemonic(mnemonic).derivePath(defaultDerivationPath).privateKey;
-
-        // Clarify you are encrypting a mnemonic
-        let options = {
-            entropy: entropy
-        };
-
-        secretStorage.encrypt(privateKey, password, options, (progress) => {
-            showLoading(progress)
-        }).then(json => {
-            $('#loadingBox').hide();
-            sessionStorage['HDNode'] = json;
-            showInfo('Wallet successfully loaded!');
-            showLoggedInButtons();
-        });
+        let wallet = ethers.Wallet.fromMnemonic(mnemonic);
+        encryptAndSaveJSON(wallet, password)
+            .then(() => showInfo('Wallet successfully loaded'));
     }
 
     function showLoggedInButtons() {
@@ -153,58 +139,47 @@ $(document).ready(function () {
     function showMnemonic() {
         let password = $('#showMnemonicPassword').val();
         let json = sessionStorage.HDNode;
-        secretStorage.decrypt(json, password, (progress) => {
-            showLoading(progress)
-        })
+        ethers.Wallet.fromEncryptedWallet(json, password, showLoadingProgress)
             .then(signingKey => {
-                $('#loadingBox').hide();
                 showInfo("Your mnemonic is: " + signingKey.mnemonic);
                 console.log(signingKey);
             })
-            .catch(err => {
-                showError(err);
-            })
-
+            .catch(showError)
+            .finally(() => $('#loadingBox').hide())
     }
 
-    function showBalances() {
+    function showAddressesAndBalances() {
         let password = $('#viewBalancesPassword').val();
         let json = sessionStorage.HDNode;
-        secretStorage.decrypt(json, password, (progress) => {
-            showLoading(progress)
-        })
+        ethers.Wallet.fromEncryptedWallet(json, password, showLoadingProgress)
+            .then(renderAddressesAndBalances)
+            .catch(showError)
+            .finally(() => $('#loadingBox').hide());
+
+        function renderAddressesAndBalances(signingKey) {
+            console.log(signingKey);
+            let masterNode = HDNode.fromMnemonic(signingKey.mnemonic);
+            for (let i = 0; i < 5; i++) {
+                let div = $('<div id="qrcode">');
+                let wallet = new ethers.Wallet(masterNode.derivePath(derivationPath + i).privateKey, provider);
+                wallet.getBalance().then((balance) => {
+                    div.qrcode(wallet.address);
+                    div.append($(`<p>${wallet.address}: ${utils.formatEther(balance)} ETH</p>`));
+                    $('#renderWallets').append(div);
+                })
+                    .catch(showError);
+            }
+        }
+    }
+
+    function unlockWalletAndDeriveAddresses() {
+        let password = $('#sendTransactionPassword').val();
+        let json = sessionStorage.HDNode;
+        secretStorage.decrypt(json, password, showLoadingProgress)
             .then(signingKey => {
                 $('#loadingBox').hide();
                 let masterNode = HDNode.fromMnemonic(signingKey.mnemonic);
-                for (let i = index; i < index + 5; i++) {
-                    let div = $('<div id="qrcode">');
-                    let wallet = new ethers.Wallet(masterNode.derivePath(derivationPath + i).privateKey, provider);
-                    wallet.getBalance().then((balance) => {
-                        div.append($(`<p>${wallet.address}: ${utils.formatEther(balance)} ETH</p>`));
-                        $('#showAddresses').append(div);
-                    })
-                        .catch(err => {
-                            showError(err);
-                        });
-                }
-                index += 5;
-            })
-            .catch(err => {
-                $('#loadingBox').hide();
-                showError(err);
-            })
-    }
-
-    function showAddresses() {
-        let password = $('#viewBalancesPassword').val();
-        let json = sessionStorage.HDNode;
-        secretStorage.decrypt(json, password, (progress) => {
-            showLoading(progress)
-        })
-            .then(signingKey => {
-                $('#loadingBox').hide();
-                let masterNode = HDNode.fromMnemonic(signingKey.mnemonic);
-                for (let i = index; i < index + 5; i++) {
+                for (let i = 0; i < 5; i++) {
                     let wallet = new ethers.Wallet(masterNode.derivePath(derivationPath + i).privateKey, provider);
                     let address = wallet.address;
 
@@ -212,7 +187,6 @@ $(document).ready(function () {
                     let option = $(`<option id=${wallet.address}>`).text(address);
                     $('#senderAddress').append(option);
                 }
-                index += 5;
             })
             .catch(err => {
                 $('#loadingBox').hide();
@@ -223,40 +197,32 @@ $(document).ready(function () {
     function signTransaction() {
         let address = $('#senderAddress option:selected').attr('id');
         let wallet = wallets[address];
-        if (!wallet) {
-            showError("Invalid address!")
-        }
+        if (!wallet)
+            return showError("Invalid address!");
         let recipient = $('#recipientAddress').val();
         if (!recipient)
-            return showError("Add recipient");
-
+            return showError("Invalid recipient");
         let value = $('#transferValue').val();
         if (!value)
-            return showError("Add value!");
-        let transactionCount = wallet.getTransactionCount()
+            return showError("Invaid transfer value!");
+
+        wallet.getTransactionCount()
             .then(nonce => {
                 console.log(nonce);
                 let transaction = {
-                    nonce: nonce,
+                    nonce,
                     gasLimit: 21000,
                     gasPrice: utils.bigNumberify("20000000000"),
-
                     to: recipient,
-
                     value: utils.parseEther(value.toString()),
                     data: "0x",
-
-                    // This ensures the transaction cannot be replayed on different networks
-                    //ethers.providers.Provider.chainId.ropsten ?
-                    chainId: 3
+                    chainId: provider.chainId
                 };
                 console.log(transaction);
                 let signedTransaction = wallet.sign(transaction);
                 $('#textareaSignedTransaction').val(signedTransaction);
             })
-            .catch(err => {
-                showError(err);
-            });
+            .catch(showError);
     }
 
     function sendSignedTransaction() {
@@ -274,4 +240,3 @@ $(document).ready(function () {
         showView('viewHome');
     }
 });
-//browserify ./node_modules/ethers/wallet/secret-storage.js --s secretStorage > secretStorage.js

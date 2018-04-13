@@ -119,3 +119,12 @@ textarea {
 #panelAccountInfo input#currentAccountAddress {
     color: #555;
 }
+
+div {
+    border: 1px solid #DDD;
+    border-radius: 4px;
+    padding: 5px;
+    max-width: 100%;
+    height: auto;
+    margin: 10px;
+}

@@ -8,22 +8,21 @@
     <title>Ethers.js Simple Wallet</title>
     <link rel="stylesheet" type="text/css" href="wallet.css" />
     <script src="lib/ethers.min.js"></script>
-    <script src="lib/secretStorage.js"></script>
-    <script src="lib/qrcode.min.js"></script>
     <script src="lib/jquery-3.1.1.min.js"></script>
+    <script src="lib/jquery.qrcode.min.js"></script>
     <script src="wallet.js"></script>
 </head>
 
 <body>
 <header id="menu">
     <a href="#" id="linkHome">Home</a>
-    <a href="#" id="linkCreateNewWallet">Create New Wallet</a>
+    <a href="#" id="linkCreateNewWallet">Create New Random Wallet</a>
     <a href="#" id="linkImportExistingWalletFromMnemonic">Open Wallet From Mnemonic</a>
+    <a href="#" id="linkImportWalletFromFile">Open Wallet From File</a>
     <a href="#" id="linkShowMnemonic" class="after-login">Show Mnemonic</a>
-    <a href="#" id="linkViewBalances" class="after-login">View Balances</a>
-    <a href="#" id="linkSendTransaction" class="after-login">Send Transactions</a>
-    <a href="#" id="linkToDo" class="after-login">TODO</a>
-    <a href="#" id="linkLogout" class="after-login">Logout</a>
+    <a href="#" id="linkViewBalances" class="after-login">View Addresses</a>
+    <a href="#" id="linkSendTransaction" class="after-login">Send Transaction</a>
+    <a href="#" id="linkLogout" class="after-login">Delete Wallet</a>
 </header>
 
 <main>
@@ -82,7 +81,7 @@
         <p>Enter your password:</p>
         <input type="password" id="viewBalancesPassword"/>
         <input type="button" id="buttonViewAddresses" value="View Addresses"/>
-        <div id="showAddresses"></div>
+        <div id="renderWallets"></div>
     </section>
 
     <section id="viewSendTransaction">
