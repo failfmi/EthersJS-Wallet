@@ -18,7 +18,11 @@ $(document).ready(function () {
     $('#linkImportExistingWalletFromMnemonic').click(function () {
         $('#textareaOpenWallet').val('');
         $('#textareaOpenWallet').val('toddler online monitor oblige solid enrich cycle animal mad prevent hockey motor');
-        showView("viewOpenExistingWallet");
+        showView("viewOpenWalletFromMnemonic");
+    });
+    $('#linkImportWalletFromFile').click(function () {
+        $('#walletUploadPassword').val('');
+        showView("viewOpenWalletFromFile");
     });
 
     $('#linkShowMnemonic').click(function () {
@@ -39,7 +43,8 @@ $(document).ready(function () {
     });
 
     $('#buttonGenerateNewWallet').click(generateNewWallet);
-    $('#buttonOpenExistingWallet').click(openExistingWallet);
+    $('#buttonOpenExistingWallet').click(openWalletFromMnemonic);
+    $('#buttonUploadWallet').click(openWalletFromFile);
     $('#buttonShowMnemonic').click(showMnemonic);
     $('#buttonViewAddresses').click(showAddressesAndBalances);
     $('#buttonSendAddresses').click(unlockWalletAndDeriveAddresses);
@@ -144,7 +149,7 @@ $(document).ready(function () {
             .finally(hideLoadingBar);
     }
 
-    function openExistingWallet() {
+    function openWalletFromMnemonic() {
         let mnemonic = $('#textareaOpenWallet').val();
         if (!HDNode.isValidMnemonic(mnemonic))
             return showError('Invalid mnemonic!');
@@ -153,17 +158,46 @@ $(document).ready(function () {
         let wallet = ethers.Wallet.fromMnemonic(mnemonic);
 
         encryptAndSaveJSON(wallet, password)
-            .then(() => showInfo('Wallet successfully loaded'));
+            .then(() => showInfo('Wallet successfully loaded!'));
     }
 
+    function decryptWallet(json, password) {
+        return ethers.Wallet.fromEncryptedWallet(json, password, showLoadingProgress);
+    }
+
+    function openWalletFromFile() {
+        if ($('#walletForUpload')[0].files.length === 0) {
+            return showError("Please select a file to upload.");
+        }
+        let password = $('#walletUploadPassword').val();
+        let fileReader = new FileReader();
+        fileReader.onload = function () {
+            let json = fileReader.result;
+
+            decryptWallet(json, password)
+                .then(signingKey => {
+
+                    //Check that the JSON is generated from a mnemonic and not from a single private key
+                    if(!signingKey.mnemonic)
+                        return showError("Invalid JSON file!");
+
+                    sessionStorage['HDNode'] = json;
+                    showInfo('Wallet successfully loaded!');
+                    showLoggedInButtons();
+                })
+                .catch(showError)
+                .finally(hideLoadingBar);
+        };
+        fileReader.readAsText($('#walletForUpload')[0].files[0]);
+    }
 
     function showMnemonic() {
         let password = $('#showMnemonicPassword').val();
         let json = sessionStorage.HDNode;
-        ethers.Wallet.fromEncryptedWallet(json, password, showLoadingProgress)
+
+        decryptWallet(json, password)
             .then(signingKey => {
                 showInfo("Your mnemonic is: " + signingKey.mnemonic);
-                console.log(signingKey);
             })
             .catch(showError)
             .finally(hideLoadingBar)
@@ -172,7 +206,7 @@ $(document).ready(function () {
     function showAddressesAndBalances() {
         let password = $('#viewBalancesPassword').val();
         let json = sessionStorage.HDNode;
-        ethers.Wallet.fromEncryptedWallet(json, password, showLoadingProgress)
+        decryptWallet(json, password)
             .then(renderAddressesAndBalances)
             .catch(showError)
             .finally(hideLoadingBar);
@@ -183,6 +217,7 @@ $(document).ready(function () {
             for (let i = 0; i < 5; i++) {
                 let div = $('<div id="qrcode">');
                 let wallet = new ethers.Wallet(masterNode.derivePath(derivationPath + i).privateKey, provider);
+
                 wallet.getBalance().then((balance) => {
                     div.qrcode(wallet.address);
                     div.append($(`<p>${wallet.address}: ${utils.formatEther(balance)} ETH</p>`));
@@ -218,7 +253,6 @@ $(document).ready(function () {
         let address = $('#senderAddress option:selected').attr('id');
 
         let wallet = wallets[address];
-
         if (!wallet)
             return showError("Invalid address!");
 
@@ -253,12 +287,11 @@ $(document).ready(function () {
 
     function sendSignedTransaction() {
         let signedTransaction = $('#textareaSignedTransaction').val();
-        provider.sendTransaction(signedTransaction).then(hash => {
-            showInfo("Transaction hash:" + hash);
-        })
-            .catch(err => {
-                showError(err);
-            });
+        provider.sendTransaction(signedTransaction)
+            .then(hash => {
+                showInfo("Transaction hash: " + hash);
+            })
+            .catch(showError);
     }
 
     function logout() {

@@ -59,7 +59,7 @@
         <textarea id="textareaCreateWalletResult" class="result" readonly="true"></textarea>
     </section>
 
-    <section id="viewOpenExistingWallet">
+    <section id="viewOpenWalletFromMnemonic">
         <h1>Open an Existing Wallet</h1>
         <p>Enter your Mnemonic: </p>
         <textarea id="textareaOpenWallet" ></textarea>
@@ -67,6 +67,14 @@
         <input type="password" id="openWalletPassword" />
         <br>
         <input type="button" id="buttonOpenExistingWallet" value="Open Wallet" />
+    </section>
+    
+    <section id="viewOpenWalletFromFile">
+        <h1>Submit a JSON file</h1>
+        <input type="file" id="walletForUpload" />
+        <br>
+        <input type="password" id="walletUploadPassword"/>
+        <input type="button" id="buttonUploadWallet" value="Open" />
     </section>
 
     <section id="viewShowMnemonic">
