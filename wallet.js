@@ -16,21 +16,25 @@ $(document).ready(function () {
     });
 
     $('#linkImportExistingWalletFromMnemonic').click(function () {
-        $('#textareaOpenWallet').empty();
-        $('#textareaOpenWallet').text('toddler online monitor oblige solid enrich cycle animal mad prevent hockey motor');
+        $('#textareaOpenWallet').val('');
+        $('#textareaOpenWallet').val('toddler online monitor oblige solid enrich cycle animal mad prevent hockey motor');
         showView("viewOpenExistingWallet");
     });
 
     $('#linkShowMnemonic').click(function () {
+        $('#showMnemonicPassword').val('');
         showView("viewShowMnemonic");
     });
 
     $('#linkViewBalances').click(function () {
+        $('#viewBalancesPassword').val('');
         $('#renderWallets').empty();
         showView("viewBalances");
     });
     $('#linkSendTransaction').click(function () {
         $('#senderAddress').empty();
+        $('#transferValue').val('');
+        $('#textareaSignedTransaction').val('');
         showView("viewSendTransaction");
     });
 
@@ -50,6 +54,9 @@ $(document).ready(function () {
         $('#' + viewName).show();
 
         if (sessionStorage.HDNode) {
+            $('#linkCreateNewWallet').hide();
+            $('#linkImportExistingWalletFromMnemonic').hide();
+            $('#linkImportWalletFromFile').hide();
             //Logged in -> show user panel and links
             $('#linkShowMnemonic').show();
             $('#linkViewBalances').show();
@@ -58,6 +65,10 @@ $(document).ready(function () {
         }
         else {
             //Not logged in -> hide user panel and links
+            $('#linkCreateNewWallet').show();
+            $('#linkImportExistingWalletFromMnemonic').show();
+            $('#linkImportWalletFromFile').show();
+
             $('#linkShowMnemonic').hide();
             $('#linkViewBalances').hide();
             $('#linkSendTransaction').hide();
@@ -89,6 +100,21 @@ $(document).ready(function () {
         })
     }
 
+    function hideLoadingBar() {
+        $('#loadingBox').hide();
+    }
+
+    function showLoggedInButtons() {
+        $('#linkCreateNewWallet').hide();
+        $('#linkImportExistingWalletFromMnemonic').hide();
+        $('#linkImportWalletFromFile').hide();
+
+        $('#linkShowMnemonic').show();
+        $('#linkViewBalances').show();
+        $('#linkSendTransaction').show();
+        $('#linkLogout').show();
+    }
+
     function generateNewWallet() {
         let password = $('#createWalletPassword').val();
         // let randomEntropyBytes = utils.randomBytes(16);
@@ -111,30 +137,25 @@ $(document).ready(function () {
 
         return wallet.encrypt(password, {}, showLoadingProgress)
             .then(json => {
-                $('#loadingBox').hide();
                 sessionStorage['HDNode'] = json;
                 $('#textareaCreateWalletResult').text('JSON: ' + sessionStorage.HDNode);
                 showLoggedInButtons();
-            });
+            })
+            .finally(hideLoadingBar);
     }
 
     function openExistingWallet() {
         let mnemonic = $('#textareaOpenWallet').val();
-        if (!HDNode.isValidMnemonic(mnemonic)) {
-            return showError('Invalid mnemonic!')
-        }
+        if (!HDNode.isValidMnemonic(mnemonic))
+            return showError('Invalid mnemonic!');
+
         let password = $('#openWalletPassword').val();
         let wallet = ethers.Wallet.fromMnemonic(mnemonic);
+
         encryptAndSaveJSON(wallet, password)
             .then(() => showInfo('Wallet successfully loaded'));
     }
 
-    function showLoggedInButtons() {
-        $('#linkShowMnemonic').show();
-        $('#linkViewBalances').show();
-        $('#linkSendTransaction').show();
-        $('#linkLogout').show();
-    }
 
     function showMnemonic() {
         let password = $('#showMnemonicPassword').val();
@@ -145,7 +166,7 @@ $(document).ready(function () {
                 console.log(signingKey);
             })
             .catch(showError)
-            .finally(() => $('#loadingBox').hide())
+            .finally(hideLoadingBar)
     }
 
     function showAddressesAndBalances() {
@@ -154,7 +175,7 @@ $(document).ready(function () {
         ethers.Wallet.fromEncryptedWallet(json, password, showLoadingProgress)
             .then(renderAddressesAndBalances)
             .catch(showError)
-            .finally(() => $('#loadingBox').hide());
+            .finally(hideLoadingBar);
 
         function renderAddressesAndBalances(signingKey) {
             console.log(signingKey);
@@ -175,54 +196,59 @@ $(document).ready(function () {
     function unlockWalletAndDeriveAddresses() {
         let password = $('#sendTransactionPassword').val();
         let json = sessionStorage.HDNode;
-        secretStorage.decrypt(json, password, showLoadingProgress)
-            .then(signingKey => {
-                $('#loadingBox').hide();
-                let masterNode = HDNode.fromMnemonic(signingKey.mnemonic);
-                for (let i = 0; i < 5; i++) {
-                    let wallet = new ethers.Wallet(masterNode.derivePath(derivationPath + i).privateKey, provider);
-                    let address = wallet.address;
+        ethers.Wallet.fromEncryptedWallet(json, password, showLoadingProgress)
+            .then(renderAddresses)
+            .catch(showError)
+            .finally(hideLoadingBar);
 
-                    wallets[address] = wallet;
-                    let option = $(`<option id=${wallet.address}>`).text(address);
-                    $('#senderAddress').append(option);
-                }
-            })
-            .catch(err => {
-                $('#loadingBox').hide();
-                showError(err);
-            })
+        function renderAddresses(signingKey) {
+            let masterNode = HDNode.fromMnemonic(signingKey.mnemonic);
+            for (let i = 0; i < 5; i++) {
+                let wallet = new ethers.Wallet(masterNode.derivePath(derivationPath + i).privateKey, provider);
+                let address = wallet.address;
+
+                wallets[address] = wallet;
+                let option = $(`<option id=${wallet.address}>`).text(address);
+                $('#senderAddress').append(option);
+            }
+        }
     }
 
     function signTransaction() {
         let address = $('#senderAddress option:selected').attr('id');
+
         let wallet = wallets[address];
+
         if (!wallet)
             return showError("Invalid address!");
+
         let recipient = $('#recipientAddress').val();
         if (!recipient)
             return showError("Invalid recipient");
+
         let value = $('#transferValue').val();
         if (!value)
             return showError("Invaid transfer value!");
 
         wallet.getTransactionCount()
-            .then(nonce => {
-                console.log(nonce);
-                let transaction = {
-                    nonce,
-                    gasLimit: 21000,
-                    gasPrice: utils.bigNumberify("20000000000"),
-                    to: recipient,
-                    value: utils.parseEther(value.toString()),
-                    data: "0x",
-                    chainId: provider.chainId
-                };
-                console.log(transaction);
-                let signedTransaction = wallet.sign(transaction);
-                $('#textareaSignedTransaction').val(signedTransaction);
-            })
+            .then(signTransaction)
             .catch(showError);
+
+        function signTransaction(nonce) {
+            console.log(nonce);
+            let transaction = {
+                nonce,
+                gasLimit: 21000,
+                gasPrice: utils.bigNumberify("20000000000"),
+                to: recipient,
+                value: utils.parseEther(value.toString()),
+                data: "0x",
+                chainId: provider.chainId
+            };
+            console.log(transaction);
+            let signedTransaction = wallet.sign(transaction);
+            $('#textareaSignedTransaction').val(signedTransaction);
+        }
     }
 
     function sendSignedTransaction() {
