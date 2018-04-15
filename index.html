@@ -3,10 +3,10 @@
 <html>
 
 <head>
-    <meta charset="utf-8" />
+    <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ethers.js Simple Wallet</title>
-    <link rel="stylesheet" type="text/css" href="wallet.css" />
+    <title>Simple Wallet</title>
+    <link rel="stylesheet" type="text/css" href="wallet.css"/>
     <script src="lib/ethers.min.js"></script>
     <script src="lib/jquery-3.1.1.min.js"></script>
     <script src="lib/jquery.qrcode.min.js"></script>
@@ -17,107 +17,118 @@
 <header id="menu">
     <a href="#" id="linkHome">Home</a>
     <a href="#" id="linkCreateNewWallet">Create New Random Wallet</a>
-    <a href="#" id="linkImportExistingWalletFromMnemonic">Open Wallet From Mnemonic</a>
+    <a href="#" id="linkImportWalletFromMnemonic">Open Wallet From Mnemonic</a>
     <a href="#" id="linkImportWalletFromFile">Open Wallet From File</a>
     <a href="#" id="linkShowMnemonic" class="after-login">Show Mnemonic</a>
-    <a href="#" id="linkViewBalances" class="after-login">View Addresses</a>
+    <a href="#" id="linkShowAddressesAndBalances" class="after-login">View Addresses</a>
     <a href="#" id="linkSendTransaction" class="after-login">Send Transaction</a>
-    <a href="#" id="linkLogout" class="after-login">Delete Wallet</a>
+    <a href="#" id="linkDelete" class="after-login">Delete Wallet</a>
 </header>
 
 <main>
     <section id="loadingBox">Loading ...</section>
 
-    <section id="infoBox"><header>x</header><p>Info</p></section>
+    <section id="infoBox">
+        <header>x</header>
+        <p>Info</p></section>
 
-    <section id="errorBox"><header>x</header><p>Error</p></section>
+    <section id="errorBox">
+        <header>x</header>
+        <p>Error</p></section>
 
     <section id="viewHome">
-        <h1>Simple Wallet for the NakovChain</h1>
-        Welcome to the simple wallet for the NakovChain educational testing blockchain network.
+        <h1>Simple JavaScript Wallet using ethers.js</h1>
+        Welcome to the imple wallet using <b>Ethereum Ropsten Testnet</b>.
         <ul>
-            <li>The wallet keeps a <b>private key</b> and its associated <b>public key</b> and <b>blockchain address</b>.</li>
-            <li><b>ECDSA-based cryptography</b> is used, based on the <a href="https://en.bitcoin.it/wiki/Secp256k1">secp256k1 curve</a>.</li>
+            <li>The wallet keeps an <b>encrypted json file</b> which .</li>
+            <li><b>ECDSA-based cryptography</b> is used, based on the <a href="https://en.bitcoin.it/wiki/Secp256k1">secp256k1
+                curve</a>.
+            </li>
             <li>The <b>private key</b> is 256-bit integer, encoded as <b>64 hex digits</b></li>
-            <li>The <b>public key</b> is coordinate {x, y} on the secp256k1 elliptic curve, encoded in compressed form as <b>65 hex digits</b>:
+            <li>The <b>public key</b> is coordinate {x, y} on the secp256k1 elliptic curve, encoded in compressed form
+                as <b>65 hex digits</b>:
                 <ul>
                     <li>64 hex digits for the x coordinate</li>
                     <li>1 hex digit for the odd / even of y (0 or 1) at the end</li>
                 </ul>
             </li>
-            <li>The <b> blockchain address</b> is 160-bit RIPEMD-160 hash of the compressed public key, encoded as <b>40 hex digits</b></li>
+            <li>The <b> blockchain address</b> is 160-bit RIPEMD-160 hash of the compressed public key, encoded as <b>40
+                hex digits</b></li>
         </ul>
     </section>
 
     <section id="viewCreateNewWallet">
         <h1>Create a New Wallet</h1>
-        <p>Generate a new wallet: random private key -> public key -> address.</p>
-        <label for="createWalletPassword">Please type your password:</label>
-        <input type="password" id="createWalletPassword" required>
-        <br>
-        <input type="button" id="buttonGenerateNewWallet" value="Generate Now" />
+        <p>Generate a new wallet: random mnemonic + password -> encrypted JSON.</p>
+        <span>Enter password: </span><input type="password" id="passwordCreateWallet">
+        <input type="button" id="buttonGenerateNewWallet" value="Generate Now"/>
+        <p>JSON:</p>
         <textarea id="textareaCreateWalletResult" class="result" readonly="true"></textarea>
     </section>
 
     <section id="viewOpenWalletFromMnemonic">
-        <h1>Open an Existing Wallet</h1>
-        <p>Enter your Mnemonic: </p>
-        <textarea id="textareaOpenWallet" ></textarea>
-        <p>Enter your password:</p>
-        <input type="password" id="openWalletPassword" />
-        <br>
-        <input type="button" id="buttonOpenExistingWallet" value="Open Wallet" />
+        <h1>Open a Wallet From Mnemonic</h1>
+        <p>Enter your Mnemonic Phrase: </p>
+        <textarea id="textareaOpenWallet"></textarea>
+        <span>Enter password: </span><input type="password" id="passwordOpenWallet">
+        <input type="button" id="buttonOpenExistingWallet" value="Open Wallet"/>
+        <p>JSON:</p>
+        <textarea id="textareaOpenWalletResult" class="result" readonly="true"></textarea>
     </section>
-    
+
     <section id="viewOpenWalletFromFile">
-        <h1>Submit a JSON file</h1>
-        <input type="file" id="walletForUpload" />
-        <br>
-        <input type="password" id="walletUploadPassword"/>
-        <input type="button" id="buttonUploadWallet" value="Open" />
+        <h1>Open a Wallet From JSON File</h1>
+        <p>Submit a JSON file</p>
+        <input type="file" id="walletForUpload"/> <br/>
+        <span>Enter password: </span><input type="password" id="passwordUploadWallet">
+        <input type="button" id="buttonUploadWallet" value="Open"/>
     </section>
 
     <section id="viewShowMnemonic">
         <h1>Show Mnemonic</h1>
-        <p>Enter your password:</p>
-        <input type="password" id="showMnemonicPassword"/>
+        <span>Enter password: </span><input type="password" id="passwordShowMnemonic">
         <input type="button" id="buttonShowMnemonic" value="Show Mnemonic"/>
     </section>
 
-    <section id="viewBalances">
+    <section id="viewShowAddressesAndBalances">
         <h1>View Wallet Balances</h1>
         <p>Enter your password:</p>
-        <input type="password" id="viewBalancesPassword"/>
+        <input type="password" id="passwordShowAddresses"/>
         <input type="button" id="buttonViewAddresses" value="View Addresses"/>
-        <div id="renderWallets"></div>
+        <div id="divAddressesAndBalances"></div>
     </section>
 
     <section id="viewSendTransaction">
         <h1>Send Transaction</h1>
-        <div><span>Enter password:</span><input type="password" id="sendTransactionPassword"></div>
-        <input type="button" id="buttonSendAddresses" value="Unlock"/>
+        <div>
+            <span>Enter password:</span><input type="password" id="passwordSendTransaction">
+            <input type="button" id="buttonSendAddresses" value="Unlock"/>
+        </div>
+        <div id="divSignAndSendTransaction">
         <div><span>Sender:</span><select name="address" id="senderAddress"></select></div>
-        <div><span>Recepient:</span><input type="text" id="recipientAddress" value="0x89e696bF35837f9c165f2021736F482fceA75dF7"></div>
-        <div><span>Value:</span><input type="number" id="transferValue" /></div>
+        <div><span>Recepient:</span><input type="text" id="recipientAddress"
+                                           value="0x89e696bF35837f9c165f2021736F482fceA75dF7"></div>
+        <div><span>Value:</span><input type="number" id="transferValue"/></div>
         <!--<div><span>Fee:</span><input type="number" id="miningFee" value="20" /></div>-->
         <!--<div><span>Data:</span><input type="text" id="tranData" value="Transaction from the simple JS wallet" /></div>-->
-        <input type="button" id="buttonSignTransaction" value="Sign Transaction" />
+        <input type="button" id="buttonSignTransaction" value="Sign Transaction"/>
         <textarea id="textareaSignedTransaction" class="signedTransaction" readonly="true"></textarea>
 
-        <input type="button" id="buttonSendSignedTransaction" value="Send Transaction" />
+        <input type="button" id="buttonSendSignedTransaction" value="Send Transaction"/>
         <textarea id="textareaSendTransactionResult" class="result" readonly="true"></textarea>
+        </div>
     </section>
 
     <!--<section id="panelAccountInfo">-->
-        <!--<h1>Account Info</h1>-->
-        <!--<div>-->
-            <!--<span>Account address:</span>-->
-            <!--<input type="text" id="currentAccountAddress" readonly="readonly" />-->
-        <!--</div>-->
-        <!--<div>-->
-            <!--<span>Blockchain node:</span>-->
-            <!--<input type="text" id="currentNodeUrl" value="http://localhost:5555" />-->
-        <!--</div>-->
+    <!--<h1>Account Info</h1>-->
+    <!--<div>-->
+    <!--<span>Account address:</span>-->
+    <!--<input type="text" id="currentAccountAddress" readonly="readonly" />-->
+    <!--</div>-->
+    <!--<div>-->
+    <!--<span>Blockchain node:</span>-->
+    <!--<input type="text" id="currentNodeUrl" value="http://localhost:5555" />-->
+    <!--</div>-->
     <!--</section>-->
 </main>
 

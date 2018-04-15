@@ -44,12 +44,12 @@ section h1 {
     border-radius: 3px;
 }
 
-#infoBox>header, #errorBox>header, #loadingBox>header {
+#infoBox > header, #errorBox > header, #loadingBox > header {
     float: right;
     margin-right: 5px;
 }
 
-#infoBox>header:hover, #errorBox>header:hover, #loadingBox>header:hover {
+#infoBox > header:hover, #errorBox > header:hover, #loadingBox > header:hover {
     transition: all 0.2s;
     font-weight: bold;
     cursor: pointer;
@@ -58,9 +58,11 @@ section h1 {
 #loadingBox {
     background: #7CB3E9;
 }
+
 #infoBox {
     background: #393;
 }
+
 #errorBox {
     background: #F50;
 }
@@ -120,7 +122,7 @@ textarea {
     color: #555;
 }
 
-div {
+div #qrcode {
     border: 1px solid #DDD;
     border-radius: 4px;
     padding: 5px;
