@@ -21,6 +21,7 @@ $(document).ready(function () {
         $('#textareaOpenWallet').val('toddler online monitor oblige solid enrich cycle animal mad prevent hockey motor');
         showView("viewOpenWalletFromMnemonic");
     });
+
     $('#linkImportWalletFromFile').click(function () {
         $('#passwordWalletUpload').val('');
         showView("viewOpenWalletFromFile");
@@ -36,6 +37,7 @@ $(document).ready(function () {
         $('#divAddressesAndBalances').empty();
         showView("viewShowAddressesAndBalances");
     });
+
     $('#linkSendTransaction').click(function () {
         $('#divSignAndSendTransaction').hide();
 
@@ -53,7 +55,7 @@ $(document).ready(function () {
     $('#buttonOpenExistingWallet').click(openWalletFromMnemonic);
     $('#buttonUploadWallet').click(openWalletFromFile);
     $('#buttonShowMnemonic').click(showMnemonic);
-    $('#buttonViewAddresses').click(showAddressesAndBalances);
+    $('#buttonShowAddresses').click(showAddressesAndBalances);
     $('#buttonSendAddresses').click(unlockWalletAndDeriveAddresses);
     $('#buttonSignTransaction').click(signTransaction);
     $('#buttonSendSignedTransaction').click(sendSignedTransaction);
@@ -65,7 +67,7 @@ $(document).ready(function () {
         $('main > section').hide();
         $('#' + viewName).show();
 
-        if (sessionStorage.HDNode) {
+        if (localStorage.JSON) {
             $('#linkCreateNewWallet').hide();
             $('#linkImportWalletFromMnemonic').hide();
             $('#linkImportWalletFromFile').hide();
@@ -129,7 +131,7 @@ $(document).ready(function () {
     function encryptAndSaveJSON(wallet, password) {
         return wallet.encrypt(password, {}, showLoadingProgress)
             .then(json => {
-                sessionStorage['HDNode'] = json;
+                localStorage['JSON'] = json;
                 showLoggedInButtons();
             })
             .finally(hideLoadingBar);
@@ -146,7 +148,7 @@ $(document).ready(function () {
         encryptAndSaveJSON(wallet, password)
             .then(() => {
                 showInfo("PLEASE SAVE YOUR MNEMONIC: " + wallet.mnemonic);
-                $('#textareaCreateWalletResult').val(sessionStorage.HDNode);
+                $('#textareaCreateWalletResult').val(localStorage.JSON);
             });
     }
 
@@ -161,7 +163,7 @@ $(document).ready(function () {
         encryptAndSaveJSON(wallet, password)
             .then(() => {
                 showInfo("Wallet successfully loaded!");
-                $('#textareaOpenWalletResult').val(sessionStorage.HDNode);
+                $('#textareaOpenWalletResult').val(localStorage.JSON);
             });
     }
 
@@ -182,7 +184,7 @@ $(document).ready(function () {
                     if (!signingKey.mnemonic)
                         return showError("Invalid JSON file!");
 
-                    sessionStorage['HDNode'] = json;
+                    localStorage['JSON'] = json;
                     showInfo("Wallet successfully loaded!");
                     showLoggedInButtons();
                 })
@@ -195,7 +197,7 @@ $(document).ready(function () {
 
     function showMnemonic() {
         let password = $('#passwordShowMnemonic').val();
-        let json = sessionStorage.HDNode;
+        let json = localStorage.JSON;
 
         decryptWallet(json, password)
             .then(signingKey => {
@@ -207,10 +209,13 @@ $(document).ready(function () {
 
     function showAddressesAndBalances() {
         let password = $('#passwordShowAddresses').val();
-        let json = sessionStorage.HDNode;
+        let json = localStorage.JSON;
         decryptWallet(json, password)
             .then(renderAddressesAndBalances)
-            .catch(showError)
+            .catch(error => {
+                $('#divAddressesAndBalances').empty();
+                showError(error);
+            })
             .finally(hideLoadingBar);
 
         function renderAddressesAndBalances(signingKey) {
@@ -230,22 +235,25 @@ $(document).ready(function () {
                     })
                     .catch(showError)
             }
-            showInfo("Wallets Successfully Loaded!");
         }
     }
 
     function unlockWalletAndDeriveAddresses() {
         let password = $('#passwordSendTransaction').val();
-        let json = sessionStorage.HDNode;
+        let json = localStorage.JSON;
 
         ethers.Wallet.fromEncryptedWallet(json, password, showLoadingProgress)
             .then(signingKey => {
                 showInfo("Wallet successfully unlocked!");
+
                 renderAddresses(signingKey);
                 $('#divSignAndSendTransaction').show();
             })
             .catch(showError)
-            .finally(hideLoadingBar);
+            .finally(() => {
+                $('#passwordSendTransaction').val('');
+                hideLoadingBar();
+            });
 
         function renderAddresses(signingKey) {
             $('#senderAddress').empty();
@@ -282,7 +290,6 @@ $(document).ready(function () {
             .catch(showError);
 
         function signTransaction(nonce) {
-            console.log(nonce);
             let transaction = {
                 nonce,
                 gasLimit: 21000,
@@ -292,7 +299,7 @@ $(document).ready(function () {
                 data: "0x",
                 chainId: provider.chainId
             };
-            console.log(transaction);
+
             let signedTransaction = wallet.sign(transaction);
             $('#textareaSignedTransaction').val(signedTransaction);
         }
@@ -311,7 +318,7 @@ $(document).ready(function () {
     }
 
     function deleteWallet() {
-        sessionStorage.clear();
+        localStorage.clear();
         showView('viewHome');
     }
 });
